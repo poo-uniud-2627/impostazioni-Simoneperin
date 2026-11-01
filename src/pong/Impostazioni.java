@@ -3,6 +3,7 @@
 package pong;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -28,7 +29,18 @@ public record Impostazioni(int puntiPerVincere, int scartoMinimo, int velocitaPa
      * dice quale valore è sbagliato e perché.
      */
     public Impostazioni {
-        // scrivete qui
+        if (puntiPerVincere < 1 || puntiPerVincere > 99) {
+            throw new IllegalArgumentException(
+                    "puntiPerVincere deve essere fra 1 e 99, ma è " + puntiPerVincere);
+        }
+        if (scartoMinimo < 1 || scartoMinimo > 10) {
+            throw new IllegalArgumentException(
+                    "scartoMinimo deve essere fra 1 e 10, ma è " + scartoMinimo);
+        }
+        if (velocitaPalla < 1 || velocitaPalla > 20) {
+            throw new IllegalArgumentException(
+                    "velocitaPalla deve essere fra 1 e 20, ma è " + velocitaPalla);
+        }
     }
 
     /**
@@ -51,7 +63,85 @@ public record Impostazioni(int puntiPerVincere, int scartoMinimo, int velocitaPa
      * Se ci sono errori in più righe, il messaggio è quello della riga più in alto.
      */
     public static Impostazioni leggi(List<String> righe) {
-        return STANDARD; // scrivete qui
+        int punti = STANDARD.puntiPerVincere();
+        int scarto = STANDARD.scartoMinimo();
+        int velocita = STANDARD.velocitaPalla();
+        boolean haPunti = false;
+        boolean haScarto = false;
+        boolean haVelocita = false;
+
+        for (int i = 0; i < righe.size(); i++) {
+            String riga = righe.get(i);
+            String prefisso = "riga " + (i + 1) + ": ";
+
+            if (riga.isBlank() || riga.stripLeading().startsWith("#")) {
+                continue;
+            }
+
+            int uguale = riga.indexOf('=');
+            if (uguale < 0) {
+                throw new IllegalArgumentException(prefisso + "manca il segno =");
+            }
+            String chiave = riga.substring(0, uguale).strip();
+            String testo = riga.substring(uguale + 1).strip();
+
+            if (chiave.equals("puntiPerVincere")) {
+                punti = leggiValore(prefisso, chiave, testo, haPunti, 1, 99);
+                haPunti = true;
+            } else if (chiave.equals("scartoMinimo")) {
+                scarto = leggiValore(prefisso, chiave, testo, haScarto, 1, 10);
+                haScarto = true;
+            } else if (chiave.equals("velocitaPalla")) {
+                velocita = leggiValore(prefisso, chiave, testo, haVelocita, 1, 20);
+                haVelocita = true;
+            } else {
+                throw new IllegalArgumentException(prefisso + "chiave sconosciuta: '" + chiave + "'");
+            }
+        }
+
+        return new Impostazioni(punti, scarto, velocita);
+    }
+
+    private static int leggiValore(String prefisso, String chiave, String testo,
+                                   boolean giaLetta, int min, int max) {
+        if (!eUnIntero(testo)) {
+            throw new IllegalArgumentException(
+                    prefisso + chiave + ": '" + testo + "' non è un numero intero");
+        }
+        if (giaLetta) {
+            throw new IllegalArgumentException(prefisso + chiave + " è già stata indicata");
+        }
+        int valore;
+        try {
+            valore = Integer.parseInt(testo);
+        } catch (NumberFormatException e) {
+            // è un intero, ma troppo grande per un int: quindi fuori intervallo
+            throw new IllegalArgumentException(
+                    prefisso + chiave + " deve essere fra " + min + " e " + max + ", ma è " + testo);
+        }
+        if (valore < min || valore > max) {
+            throw new IllegalArgumentException(
+                    prefisso + chiave + " deve essere fra " + min + " e " + max + ", ma è " + valore);
+        }
+        return valore;
+    }
+
+    /** Vero se s è un segno opzionale (+ o -) seguito da almeno una cifra, e nient'altro. */
+    private static boolean eUnIntero(String s) {
+        int inizio = 0;
+        if (!s.isEmpty() && (s.charAt(0) == '+' || s.charAt(0) == '-')) {
+            inizio = 1;
+        }
+        if (inizio == s.length()) {
+            return false;
+        }
+        for (int i = inizio; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
